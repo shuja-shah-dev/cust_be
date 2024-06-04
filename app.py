@@ -3,14 +3,16 @@ import cv2
 import numpy as np
 import base64
 import time
-from yoloseg import YOLOSeg  
+from yolov8 import YOLOv8
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
 
-model = YOLOSeg("best.onnx", conf_thres=0.5, iou_thres=0.45)
+model_path = "best.onnx"
+yolov8_detector = YOLOv8(model_path, conf_thres=0.5, iou_thres=0.5)
+
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -21,16 +23,19 @@ def upload_image():
         return jsonify({'error': 'No image file provided'}), 400
 
     try:
-        file = request.files['file']
-        image_data = file.read()
-        image_array = np.frombuffer(image_data, np.uint8)
-        image_array = cv2.imdecode(image_array, cv2.IMREAD_COLOR)
+        uploaded_file = request.files['file']
+        image_bytes = uploaded_file.read()
+        # Convert bytes to NumPy array
+        image = cv2.imdecode(np.frombuffer(image_bytes, np.uint8), cv2.IMREAD_COLOR)
 
-        results = model(image_array)
-        processed_image = results[0]
+        # Perform object detection with YOLOv8
+        boxes, scores, class_ids = yolov8_detector(image)
 
-        image_bgr = cv2.cvtColor(processed_image, cv2.COLOR_RGB2BGR)  
-        _, encoded_image = cv2.imencode('.jpg', image_bgr)
+        # Draw detections on the image
+        combined_img = yolov8_detector.draw_detections(image)
+
+         
+        _, encoded_image = cv2.imencode('.jpg', combined_img)
 
         return jsonify({
             'image': 'data:image/jpeg;base64,' + base64.b64encode(encoded_image).decode('utf-8'),
@@ -43,3 +48,4 @@ def upload_image():
 
 if __name__ == "__main__":
     app.run(debug=True, port=5000)
+
