@@ -10,13 +10,16 @@ app = Flask(__name__)
 CORS(app)
 
 
-model = YOLOSeg("best.onnx", conf_thres=0.5, iou_thres=0.45)
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 @app.route('/upload-image', methods=['POST'])
 def upload_image():
+    conf_threshold = float(request.form.get('conf', 50)) / 100
+    
+    model = YOLOSeg("best.onnx", conf_thres=conf_threshold, iou_thres=0.45)
     if 'file' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
 
