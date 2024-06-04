@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Webcam Stream and Image Upload</title>
+    <script src="https://cdn.socket.io/4.0.0/socket.io.min.js"></script>
+    <style>
+        .button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+        }
+    </style>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port);
+            var video = document.getElementById('video');
+            var currentCameraIndex = 0;
+
+            // Start video on button click
+            document.getElementById('startButton').addEventListener('click', function() {
+                socket.emit('start_video', { camera_index: currentCameraIndex });
+            });
+
+            // Switch camera on button click
+            document.getElementById('switchButton').addEventListener('click', function() {
+                currentCameraIndex = (currentCameraIndex === 0) ? 1 : 0;
+                socket.emit('switch_camera', { camera_index: currentCameraIndex });
+            });
+
+            // Capture the current frame and send it for processing
+            document.getElementById('captureButton').addEventListener('click', function() {
+                var overlapThreshold = document.getElementById('overlapInput').value || 50;
+                socket.emit('capture_frame', { overlap: overlapThreshold });
+            });
+
+            // Handle image file upload and overlap threshold
+            document.getElementById('uploadButton').addEventListener('change', function(event) {
+                var file = event.target.files[0];
+                var overlapThreshold = document.getElementById('overlapInput').value || 50;
+                if (file) {
+                    var formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('overlap', overlapThreshold);
+
+                    fetch('/upload-image', {
+                        method: 'POST',
+                        body: formData
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.image) {
+                            document.getElementById('processedImage').src = data.image;
+                            console.log('Overlap Analysis:', data.status);
+                        } else {
+                            console.error('Error processing image:', data.error);
+                        }
+                    })
+                    .catch(error => console.error('Error uploading image:', error));
+                }
+            });
+
+            // Update the video source when new frames are received
+            socket.on('frame', function(data) {
+                var img = new Image();
+                img.src = data.data;
+                img.onload = function() {
+                    video.src = img.src;
+                };
+            });
+
+            // Update the processed image when received from the server
+            socket.on('processed_image', function(data) {
+                document.getElementById('processedImage').src = data.image;
+                console.log('Processed Image Displayed');
+            });
+        });
+    </script>
+</head>
+<body>
+    <h1>Webcam Stream and Image Upload</h1>
+    <div>
+        Overlap Threshold (%): <input type="number" id="overlapInput" value="50" min="0" max="100" step="1">
+    </div>
+    <div>
+        <button id="startButton" class="button">Start Webcam</button>
+        <button id="switchButton" class="button">Switch Camera</button> <!-- Switch Camera Button -->
+        <button id="captureButton" class="button">Capture</button>
+    </div>
+    <div>
+        <input type="file" id="uploadButton" accept="image/*" class="button">
+    </div>
+    <div>
+        <img id="video" alt="Webcam Video Feed" style="width:100%; border: 1px solid black;">
+    </div>
+    <div>
+        <img id="processedImage" alt="Processed Image" style="width:100%; border: 1px solid black;">
+    </div>
+</body>
+</html>
