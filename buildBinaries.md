@@ -1,7 +1,7 @@
 - To build binaries of backend you must install all the dependencies globally along with pyinstaller.
 
 ```bash
-pip install -r requirements.txt
+pip install -r req.txt
 pip install pyinstaller
 ```
 
