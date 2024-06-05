@@ -11,7 +11,7 @@ CORS(app)
 
 
 model_path = "best.onnx"
-yolov8_detector = YOLOv8(model_path, conf_thres=0.5, iou_thres=0.5)
+
 
 @app.route('/')
 def index():
@@ -19,6 +19,12 @@ def index():
 
 @app.route('/upload-image', methods=['POST'])
 def upload_image():
+    conf_threshold = float(request.form.get('conf', 50)) / 100
+    
+    yolov8_detector = YOLOv8(model_path, conf_thres=conf_threshold, iou_thres=0.5)
+
+
+
     if 'file' not in request.files:
         return jsonify({'error': 'No image file provided'}), 400
 

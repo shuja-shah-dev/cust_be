@@ -3,3 +3,4 @@ buid
 dist
 .onnx*
 best.onnx
+venv
